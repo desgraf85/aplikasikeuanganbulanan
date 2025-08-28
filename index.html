@@ -231,10 +231,30 @@
         import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, writeBatch, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables provided by the Canvas environment
+        // Konfigurasi Firebase Anda.
+        // Ganti nilai-nilai ini dengan konfigurasi proyek Firebase Anda.
+        // Anda bisa mendapatkannya di Firebase Console > Project settings.
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Global variables provided by the Canvas environment (optional, for local development/testing)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Cek apakah kode dijalankan di lingkungan Canvas atau Vercel.
+        // Jika di Canvas, gunakan variabel global. Jika tidak, gunakan konfigurasi manual.
+        let firebaseApp;
+        if (typeof __firebase_config !== 'undefined') {
+            firebaseApp = initializeApp(JSON.parse(__firebase_config));
+        } else {
+            firebaseApp = initializeApp(firebaseConfig);
+        }
 
         let db, auth, userId;
 
@@ -626,30 +646,30 @@
         // Initialize Firebase and Auth
         const initializeAppAndAuth = async () => {
             try {
-                if (Object.keys(firebaseConfig).length > 0) {
-                    const app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                    
-                    if (initialAuthToken) {
-                        const userCredential = await signInWithCustomToken(auth, initialAuthToken);
-                        userId = userCredential.user.uid;
-                    } else {
-                        const userCredential = await signInAnonymously(auth);
-                        userId = userCredential.user.uid;
-                    }
-
-                    // Show the authenticated user's ID for multi-user collaboration
-                    const userIdDiv = document.createElement('div');
-                    userIdDiv.className = 'text-center text-xs text-gray-400 mt-4';
-                    userIdDiv.textContent = `User ID: ${userId}`;
-                    document.body.appendChild(userIdDiv);
-                    
-                    setupListeners();
-                    showView('dashboard-view');
-                } else {
-                    showNotification("Konfigurasi Firebase tidak ditemukan.", true);
+                if (typeof __firebase_config === 'undefined' && Object.keys(firebaseConfig).length === 0) {
+                     showNotification("Konfigurasi Firebase tidak ditemukan. Silakan tambahkan konfigurasi proyek Anda di dalam kode.", true);
+                     return;
                 }
+                
+                db = getFirestore(firebaseApp);
+                auth = getAuth(firebaseApp);
+                    
+                if (initialAuthToken) {
+                    const userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                    userId = userCredential.user.uid;
+                } else {
+                    const userCredential = await signInAnonymously(auth);
+                    userId = userCredential.user.uid;
+                }
+
+                // Show the authenticated user's ID for multi-user collaboration
+                const userIdDiv = document.createElement('div');
+                userIdDiv.className = 'text-center text-xs text-gray-400 mt-4';
+                userIdDiv.textContent = `User ID: ${userId}`;
+                document.body.appendChild(userIdDiv);
+                
+                setupListeners();
+                showView('dashboard-view');
             } catch (error) {
                 console.error("Firebase auth error:", error);
                 showNotification("Gagal melakukan otentikasi. Silakan refresh halaman.", true);
