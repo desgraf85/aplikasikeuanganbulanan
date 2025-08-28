@@ -235,13 +235,12 @@
         // Ganti nilai-nilai ini dengan konfigurasi proyek Firebase Anda.
         // Anda bisa mendapatkannya di Firebase Console > Project settings.
         const firebaseConfig = {
-        apiKey: "AIzaSyAwqdP2YddPPLfx--W_OdyT9p6NRP3QSoc",
-  authDomain: "aplikasikeuanganbulanan.firebaseapp.com",
-  projectId: "aplikasikeuanganbulanan",
-  storageBucket: "aplikasikeuanganbulanan.firebasestorage.app",
-  messagingSenderId: "419189040070",
-  appId: "1:419189040070:web:fdca8395ec9fbcd73448c7",
-  measurementId: "G-906LH0L9TK"
+            apiKey: "AIzaSyAwqdP2YddPPLfx--W_OdyT9p6NRP3QSoc",
+            authDomain: "aplikasikeuanganbulanan.firebaseapp.com",
+            projectId: "aplikasikeuanganbulanan",
+            storageBucket: "aplikasikeuanganbulanan.firebasestorage.app",
+            messagingSenderId: "419189040070",
+            appId: "1:419189040070:web:fdca8395ec9fbcd73448c7"
         };
 
         // Global variables provided by the Canvas environment (optional, for local development/testing)
@@ -659,6 +658,7 @@
                     const userCredential = await signInWithCustomToken(auth, initialAuthToken);
                     userId = userCredential.user.uid;
                 } else {
+                    // Always sign in anonymously when hosting on Vercel
                     const userCredential = await signInAnonymously(auth);
                     userId = userCredential.user.uid;
                 }
