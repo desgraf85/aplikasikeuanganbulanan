@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Keuangan Bulanan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fafbfb;
+            color: #1a202c;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding: 1.5rem;
+        }
+        .card {
+            background-color: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            padding: 2rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background-color: #ff5733;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #ff451a;
+            transform: translateY(-1px);
+        }
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e2e8f0;
+            border-radius: 9999px;
+            height: 0.75rem;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
+            border-radius: 9999px;
+        }
+        .message-box {
+            position: fixed;
+            top: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            animation: fadeIn 0.5s, fadeOut 0.5s 4.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container min-h-screen flex flex-col">
+        <!-- Main UI -->
+        <div id="app" class="w-full">
+            <!-- Loading and Error UI -->
+            <div id="loading" class="flex justify-center items-center h-full absolute inset-0 bg-gray-100/75 z-50" style="display: none;">
+                <svg class="animate-spin -ml-1 mr-3 h-10 w-10 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-gray-600">Memuat data...</p>
+            </div>
+            
+            <!-- Message boxes -->
+            <div id="info-message" class="message-box bg-blue-500 text-white" style="display: none;"></div>
+            <div id="error-message" class="message-box bg-red-500 text-white" style="display: none;"></div>
+
+            <!-- Header and Navigation -->
+            <div class="flex justify-between items-center mb-8 pt-4">
+                <h1 class="text-3xl font-bold text-gray-800">Keuangan Bulanan</h1>
+                <nav class="flex space-x-4">
+                    <button class="nav-btn text-gray-600 font-medium px-4 py-2 rounded-full transition-colors hover:bg-gray-200" data-view="dashboard">Dashboard</button>
+                    <button class="nav-btn text-gray-600 font-medium px-4 py-2 rounded-full transition-colors hover:bg-gray-200" data-view="forms">Forms</button>
+                    <button class="nav-btn text-gray-600 font-medium px-4 py-2 rounded-full transition-colors hover:bg-gray-200" data-view="reports">Laporan</button>
+                </nav>
+            </div>
+
+            <!-- View Container -->
+            <div id="view-container" class="flex-1 flex flex-col">
+                <!-- Dashboard View -->
+                <div id="dashboard-view" class="view" style="display: none;">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="card bg-gradient-to-br from-[#ff5733] to-[#ff8d6d] text-white">
+                            <h2 class="text-lg font-medium opacity-80">Total Pemasukan</h2>
+                            <p id="total-incomes" class="text-4xl font-bold mt-2">Rp 0</p>
+                        </div>
+                        <div class="card bg-gradient-to-br from-[#36a6f6] to-[#2985cc] text-white">
+                            <h2 class="text-lg font-medium opacity-80">Total Pengeluaran</h2>
+                            <p id="total-expenses" class="text-4xl font-bold mt-2">Rp 0</p>
+                        </div>
+                        <div class="card bg-gradient-to-br from-[#ff5733] to-[#ff8d6d] text-white">
+                            <h2 class="text-lg font-medium opacity-80">Saldo Utama</h2>
+                            <p id="main-balance" class="text-4xl font-bold mt-2">Rp 0</p>
+                        </div>
+                    </div>
+
+                    <div id="budgets-list" class="space-y-4">
+                        <!-- Budget items will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Forms View -->
+                <div id="forms-view" class="view" style="display: none;">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Tambah Pemasukan Card -->
+                        <div class="card">
+                            <h2 class="text-xl font-semibold mb-4">Tambah Pemasukan</h2>
+                            <form id="income-form" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1 text-gray-600" for="income-source">Sumber</label>
+                                    <input type="text" id="income-source" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring focus:ring-orange-200 focus:border-orange-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1 text-gray-600" for="income-amount">Jumlah (Rp)</label>
+                                    <input type="number" id="income-amount" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring focus:ring-orange-200 focus:border-orange-500" required>
+                                </div>
+                                <button type="submit" class="w-full btn-primary">Simpan Pemasukan</button>
+                            </form>
+                        </div>
+
+                        <!-- Tambah Budget Card -->
+                        <div class="card">
+                            <h2 class="text-xl font-semibold mb-4">Tambah Budget Pos</h2>
+                            <form id="budget-form" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1 text-gray-600" for="budget-category">Kategori</label>
+                                    <input type="text" id="budget-category" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring focus:ring-orange-200 focus:border-orange-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1 text-gray-600" for="budget-amount">Estimasi Jumlah (Rp)</label>
+                                    <input type="number" id="budget-amount" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring focus:ring-orange-200 focus:border-orange-500" required>
+                                </div>
+                                <button type="submit" class="w-full btn-primary">Simpan Budget</button>
+                            </form>
+                        </div>
+
+                        <!-- Tambah Transaksi Card -->
+                        <div class="card">
+                            <h2 class="text-xl font-semibold mb-4">Tambah Transaksi Harian</h2>
+                            <form id="transaction-form" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-1 text-gray-600" for="transaction-description">Deskripsi</label>
+                                    <input type="text" id="transaction-description" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring focus:ring-orange-200 focus:border-orange-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1 text-gray-600" for="transaction-amount">Jumlah (Rp)</label>
+                                    <input type="number" id="transaction-amount" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring focus:ring-orange-200 focus:border-orange-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-1 text-gray-600" for="transaction-budget">Kategori Budget</label>
+                                    <select id="transaction-budget" class="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring focus:ring-orange-200 focus:border-orange-500" required></select>
+                                </div>
+                                <button type="submit" class="w-full btn-primary">Simpan Transaksi</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports View -->
+                <div id="reports-view" class="view" style="display: none;">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="card">
+                            <h3 class="text-xl font-semibold mb-4 text-gray-700">Total Pengeluaran per Kategori</h3>
+                            <canvas id="category-bar-chart"></canvas>
+                        </div>
+                        <div class="card">
+                            <h3 class="text-xl font-semibold mb-4 text-gray-700">Distribusi Pengeluaran</h3>
+                            <canvas id="expense-pie-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="card mb-6">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700">Ringkasan Keuangan</h3>
+                        <div class="flex flex-col space-y-2 text-lg">
+                            <p><span class="font-bold text-gray-700">Total Pemasukan:</span> <span id="summary-incomes" class="text-green-600 font-semibold">Rp 0</span></p>
+                            <p><span class="font-bold text-gray-700">Total Pengeluaran:</span> <span id="summary-expenses" class="text-red-600 font-semibold">Rp 0</span></p>
+                            <p><span class="font-bold text-gray-700">Saldo Akhir Bulan:</span> <span id="summary-balance" class="text-orange-600 font-semibold">Rp 0</span></p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700">Analisa Kesehatan Keuangan</h3>
+                        <p id="health-analysis" class="text-lg font-medium"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Overbudget Alert -->
+    <div id="overbudget-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style="display: none;">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm text-center">
+            <svg class="h-12 w-12 text-red-500 mx-auto mb-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+            <h3 class="text-xl font-semibold text-red-700 mb-2">Overbudget!</h3>
+            <p class="text-gray-600">Anda telah melampaui budget untuk pos <span id="overbudget-category" class="font-bold"></span>.</p>
+            <p class="text-gray-600 mt-2">Sisa <span id="overbudget-amount" class="font-bold text-red-600"></span> akan diambil dari saldo utama.</p>
+            <button id="close-overbudget-modal" class="mt-4 px-6 py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors">Tutup</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, writeBatch, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth, userId;
+
+        const mainBalanceDisplay = document.getElementById('main-balance');
+        const totalIncomesDisplay = document.getElementById('total-incomes');
+        const totalExpensesDisplay = document.getElementById('total-expenses');
+        const budgetsList = document.getElementById('budgets-list');
+        const loadingSpinner = document.getElementById('loading');
+        const errorMessage = document.getElementById('error-message');
+        const infoMessage = document.getElementById('info-message');
+        const healthAnalysisText = document.getElementById('health-analysis');
+
+        // CRUD Forms
+        const incomeForm = document.getElementById('income-form');
+        const budgetForm = document.getElementById('budget-form');
+        const transactionForm = document.getElementById('transaction-form');
+        const transactionBudgetSelect = document.getElementById('transaction-budget');
+
+        // Modals
+        const overbudgetModal = document.getElementById('overbudget-modal');
+        const overbudgetCategory = document.getElementById('overbudget-category');
+        const overbudgetAmount = document.getElementById('overbudget-amount');
+        const closeOverbudgetModal = document.getElementById('close-overbudget-modal');
+
+        // Reports
+        const summaryIncomes = document.getElementById('summary-incomes');
+        const summaryExpenses = document.getElementById('summary-expenses');
+        const summaryBalance = document.getElementById('summary-balance');
+        const categoryBarChartCtx = document.getElementById('category-bar-chart').getContext('2d');
+        const expensePieChartCtx = document.getElementById('expense-pie-chart').getContext('2d');
+        let categoryBarChart, expensePieChart;
+
+        let budgetsData = {};
+
+        // Helper function for currency formatting
+        const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        };
+
+        // Helper function to show notifications
+        const showNotification = (message, isError = false) => {
+            const el = isError ? errorMessage : infoMessage;
+            el.textContent = message;
+            el.style.display = 'block';
+            setTimeout(() => {
+                el.style.display = 'none';
+            }, 5000);
+        };
+
+        // Function to update the UI with real-time data
+        const updateDashboard = (incomes, budgets, transactions) => {
+            // Update Budgets data globally for forms and other functions
+            budgetsData = budgets.reduce((acc, b) => {
+                acc[b.id] = b;
+                return acc;
+            }, {});
+
+            // Update Transaction Form's budget select options
+            transactionBudgetSelect.innerHTML = '<option value="">Pilih Kategori</option>';
+            budgets.forEach(budget => {
+                const option = document.createElement('option');
+                option.value = budget.id;
+                option.textContent = budget.category;
+                transactionBudgetSelect.appendChild(option);
+            });
+
+            const totalIncomes = incomes.reduce((sum, item) => sum + item.amount, 0);
+            const totalExpenses = transactions.reduce((sum, item) => sum + item.amount, 0);
+            const mainBalance = totalIncomes - totalExpenses;
+
+            totalIncomesDisplay.textContent = formatCurrency(totalIncomes);
+            totalExpensesDisplay.textContent = formatCurrency(totalExpenses);
+            mainBalanceDisplay.textContent = formatCurrency(mainBalance);
+
+            budgetsList.innerHTML = '';
+            budgets.forEach(budget => {
+                const spent = budget.spent_amount || 0;
+                const estimated = budget.estimated_amount || 0;
+                const progress = estimated > 0 ? (spent / estimated) * 100 : 0;
+
+                let progressColor = 'bg-green-500';
+                if (progress > 75 && progress <= 100) {
+                    progressColor = 'bg-yellow-500';
+                } else if (progress > 100) {
+                    progressColor = 'bg-red-500';
+                }
+
+                const budgetItem = document.createElement('div');
+                budgetItem.className = 'card';
+                budgetItem.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xl font-semibold">${budget.category}</h3>
+                        <span class="text-sm font-medium text-gray-500">${formatCurrency(spent)} / ${formatCurrency(estimated)}</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar ${progressColor}" style="width: ${Math.min(progress, 100)}%;"></div>
+                    </div>
+                    ${spent > estimated ? `<p class="mt-2 text-red-500 font-medium text-sm">Overbudget, ambil dari saldo utama.</p>` : ''}
+                `;
+                budgetsList.appendChild(budgetItem);
+            });
+        };
+
+        const updateReports = (incomes, budgets, transactions) => {
+            // Calculate data for charts
+            const expenseByCategory = transactions.reduce((acc, t) => {
+                const budget = budgets.find(b => b.id === t.budget_id);
+                if (budget) {
+                    acc[budget.category] = (acc[budget.category] || 0) + t.amount;
+                }
+                return acc;
+            }, {});
+
+            const barChartLabels = Object.keys(expenseByCategory);
+            const barChartData = Object.values(expenseByCategory);
+
+            // Bar Chart
+            if (categoryBarChart) categoryBarChart.destroy();
+            categoryBarChart = new Chart(categoryBarChartCtx, {
+                type: 'bar',
+                data: {
+                    labels: barChartLabels,
+                    datasets: [{
+                        label: 'Pengeluaran (Rp)',
+                        data: barChartData,
+                        backgroundColor: '#ff5733',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Pie Chart
+            const pieChartLabels = Object.keys(expenseByCategory);
+            const pieChartData = Object.values(expenseByCategory);
+            if (expensePieChart) expensePieChart.destroy();
+            expensePieChart = new Chart(expensePieChartCtx, {
+                type: 'pie',
+                data: {
+                    labels: pieChartLabels,
+                    datasets: [{
+                        data: pieChartData,
+                        backgroundColor: [
+                            '#ff5733', '#ff8d6d', '#ffab8c', '#36a6f6', '#2985cc', '#1c63b3', '#5e3aae', '#008b8e'
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true
+                }
+            });
+
+            // Update Summary
+            const totalIncomes = incomes.reduce((sum, item) => sum + item.amount, 0);
+            const totalExpenses = transactions.reduce((sum, item) => sum + item.amount, 0);
+            const mainBalance = totalIncomes - totalExpenses;
+
+            summaryIncomes.textContent = formatCurrency(totalIncomes);
+            summaryExpenses.textContent = formatCurrency(totalExpenses);
+            summaryBalance.textContent = formatCurrency(mainBalance);
+
+            // Smart Health Analysis
+            if (totalIncomes > 0) {
+                const expenseRatio = (totalExpenses / totalIncomes) * 100;
+                let analysisText = '';
+                if (expenseRatio <= 50) {
+                    analysisText = 'Kesehatan keuangan Anda sangat baik! Pengeluaran Anda terkendali dengan baik.';
+                    healthAnalysisText.classList.remove('text-red-500', 'text-yellow-500');
+                    healthAnalysisText.classList.add('text-green-600');
+                } else if (expenseRatio > 50 && expenseRatio <= 80) {
+                    analysisText = 'Kesehatan keuangan Anda normal. Jaga pengeluaran agar tetap dalam batas wajar.';
+                    healthAnalysisText.classList.remove('text-red-500', 'text-green-600');
+                    healthAnalysisText.classList.add('text-yellow-500');
+                } else {
+                    analysisText = 'Perhatian! Pengeluaran Anda mendekati atau melebihi pemasukan. Pertimbangkan untuk meninjau kembali budget Anda.';
+                    healthAnalysisText.classList.remove('text-yellow-500', 'text-green-600');
+                    healthAnalysisText.classList.add('text-red-500');
+                }
+                healthAnalysisText.textContent = analysisText;
+            } else {
+                healthAnalysisText.textContent = 'Tidak ada data pemasukan untuk melakukan analisa kesehatan keuangan.';
+                healthAnalysisText.classList.remove('text-red-500', 'text-yellow-500', 'text-green-600');
+            }
+        };
+
+
+        // Main data listener function
+        const setupListeners = async () => {
+            try {
+                loadingSpinner.style.display = 'flex';
+                // Public data collection for collaborative apps
+                const userDocRef = doc(db, 'artifacts', appId, 'users', userId);
+                const incomesColRef = collection(userDocRef, 'incomes');
+                const budgetsColRef = collection(userDocRef, 'budgets');
+                const transactionsColRef = collection(userDocRef, 'transactions');
+                
+                // Get initial data
+                const incomesSnapshot = await getDocs(incomesColRef);
+                const incomes = incomesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                const budgetsSnapshot = await getDocs(budgetsColRef);
+                const budgets = budgetsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                const transactionsSnapshot = await getDocs(transactionsColRef);
+                const transactions = transactionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // Initial UI updates
+                updateDashboard(incomes, budgets, transactions);
+                updateReports(incomes, budgets, transactions);
+
+                // Set up real-time listeners for all collections
+                onSnapshot(incomesColRef, (snapshot) => {
+                    const updatedIncomes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    updateDashboard(updatedIncomes, budgets, transactions);
+                    updateReports(updatedIncomes, budgets, transactions);
+                });
+
+                onSnapshot(budgetsColRef, (snapshot) => {
+                    const updatedBudgets = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    updateDashboard(incomes, updatedBudgets, transactions);
+                    updateReports(incomes, updatedBudgets, transactions);
+                });
+
+                onSnapshot(transactionsColRef, (snapshot) => {
+                    const updatedTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    updateDashboard(incomes, budgets, updatedTransactions);
+                    updateReports(incomes, budgets, updatedTransactions);
+                });
+                
+            } catch (error) {
+                console.error("Error setting up listeners or fetching data:", error);
+                showNotification("Gagal memuat data. Silakan coba lagi.", true);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        };
+
+
+        // Handle Form Submissions
+        incomeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loadingSpinner.style.display = 'flex';
+            try {
+                const source = document.getElementById('income-source').value;
+                const amount = parseFloat(document.getElementById('income-amount').value);
+                const userDocRef = doc(db, 'artifacts', appId, 'users', userId);
+                await addDoc(collection(userDocRef, 'incomes'), {
+                    source: source,
+                    amount: amount,
+                    date: serverTimestamp()
+                });
+                showNotification("Pemasukan berhasil ditambahkan!");
+                incomeForm.reset();
+            } catch (error) {
+                console.error("Error adding income:", error);
+                showNotification("Gagal menambahkan pemasukan.", true);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        });
+
+        budgetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loadingSpinner.style.display = 'flex';
+            try {
+                const category = document.getElementById('budget-category').value;
+                const estimated_amount = parseFloat(document.getElementById('budget-amount').value);
+                const userDocRef = doc(db, 'artifacts', appId, 'users', userId);
+                await addDoc(collection(userDocRef, 'budgets'), {
+                    category: category,
+                    estimated_amount: estimated_amount,
+                    spent_amount: 0
+                });
+                showNotification("Budget pos berhasil ditambahkan!");
+                budgetForm.reset();
+            } catch (error) {
+                console.error("Error adding budget:", error);
+                showNotification("Gagal menambahkan budget.", true);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        });
+
+        transactionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loadingSpinner.style.display = 'flex';
+            try {
+                const description = document.getElementById('transaction-description').value;
+                const amount = parseFloat(document.getElementById('transaction-amount').value);
+                const budgetId = document.getElementById('transaction-budget').value;
+                
+                if (!budgetId) {
+                    showNotification("Silakan pilih kategori budget.", true);
+                    loadingSpinner.style.display = 'none';
+                    return;
+                }
+
+                const budgetDocRef = doc(db, 'artifacts', appId, 'users', userId, 'budgets', budgetId);
+                const budgetDoc = await getDoc(budgetDocRef);
+
+                if (!budgetDoc.exists()) {
+                    showNotification("Budget tidak ditemukan.", true);
+                    loadingSpinner.style.display = 'none';
+                    return;
+                }
+
+                const budgetData = budgetDoc.data();
+                const currentSpent = budgetData.spent_amount || 0;
+                const estimated = budgetData.estimated_amount;
+
+                const newSpent = currentSpent + amount;
+                const batch = writeBatch(db);
+
+                // Add new transaction
+                const userDocRef = doc(db, 'artifacts', appId, 'users', userId);
+                const transactionDocRef = doc(collection(userDocRef, 'transactions'));
+                batch.set(transactionDocRef, {
+                    budget_id: budgetId,
+                    description: description,
+                    amount: amount,
+                    date: serverTimestamp()
+                });
+
+                // Update budget's spent amount
+                batch.update(budgetDocRef, {
+                    spent_amount: newSpent
+                });
+
+                await batch.commit();
+
+                // Show notification based on overbudget logic
+                if (newSpent > estimated) {
+                    overbudgetCategory.textContent = budgetData.category;
+                    overbudgetAmount.textContent = formatCurrency(newSpent - estimated);
+                    overbudgetModal.style.display = 'flex';
+                } else {
+                    showNotification("Transaksi berhasil ditambahkan!");
+                }
+
+                transactionForm.reset();
+            } catch (error) {
+                console.error("Error adding transaction:", error);
+                showNotification("Gagal menambahkan transaksi.", true);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        });
+
+        // Modal close button
+        closeOverbudgetModal.addEventListener('click', () => {
+            overbudgetModal.style.display = 'none';
+        });
+
+
+        // Handle View Navigation
+        const views = document.querySelectorAll('.view');
+        const navButtons = document.querySelectorAll('.nav-btn');
+
+        const showView = (viewId) => {
+            views.forEach(view => {
+                view.style.display = 'none';
+            });
+            document.getElementById(viewId).style.display = 'block';
+
+            navButtons.forEach(btn => {
+                btn.classList.remove('bg-gray-200', 'font-bold');
+            });
+            document.querySelector(`[data-view="${viewId.replace('-view', '')}"]`).classList.add('bg-gray-200', 'font-bold');
+        };
+
+        navButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const viewId = `${btn.dataset.view}-view`;
+                showView(viewId);
+            });
+        });
+
+        // Initialize Firebase and Auth
+        const initializeAppAndAuth = async () => {
+            try {
+                if (Object.keys(firebaseConfig).length > 0) {
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    
+                    if (initialAuthToken) {
+                        const userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                        userId = userCredential.user.uid;
+                    } else {
+                        const userCredential = await signInAnonymously(auth);
+                        userId = userCredential.user.uid;
+                    }
+
+                    // Show the authenticated user's ID for multi-user collaboration
+                    const userIdDiv = document.createElement('div');
+                    userIdDiv.className = 'text-center text-xs text-gray-400 mt-4';
+                    userIdDiv.textContent = `User ID: ${userId}`;
+                    document.body.appendChild(userIdDiv);
+                    
+                    setupListeners();
+                    showView('dashboard-view');
+                } else {
+                    showNotification("Konfigurasi Firebase tidak ditemukan.", true);
+                }
+            } catch (error) {
+                console.error("Firebase auth error:", error);
+                showNotification("Gagal melakukan otentikasi. Silakan refresh halaman.", true);
+            }
+        };
+
+        initializeAppAndAuth();
+    </script>
+</body>
+</html>
