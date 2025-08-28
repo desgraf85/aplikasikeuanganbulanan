@@ -232,8 +232,6 @@
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, onSnapshot, collection, query, where, writeBatch, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Konfigurasi Firebase Anda.
-        // Ganti nilai-nilai ini dengan konfigurasi proyek Firebase Anda.
-        // Anda bisa mendapatkannya di Firebase Console > Project settings.
         const firebaseConfig = {
             apiKey: "AIzaSyAwqdP2YddPPLfx--W_OdyT9p6NRP3QSoc",
             authDomain: "aplikasikeuanganbulanan.firebaseapp.com",
@@ -243,18 +241,11 @@
             appId: "1:419189040070:web:fdca8395ec9fbcd73448c7"
         };
 
-        // Global variables provided by the Canvas environment (optional, for local development/testing)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // Cek apakah kode dijalankan di lingkungan Canvas atau Vercel.
-        // Jika di Canvas, gunakan variabel global. Jika tidak, gunakan konfigurasi manual.
-        let firebaseApp;
-        if (typeof __firebase_config !== 'undefined') {
-            firebaseApp = initializeApp(JSON.parse(__firebase_config));
-        } else {
-            firebaseApp = initializeApp(firebaseConfig);
-        }
+        // Use the manual configuration since it's now provided.
+        const firebaseApp = initializeApp(firebaseConfig);
 
         let db, auth, userId;
 
@@ -646,22 +637,14 @@
         // Initialize Firebase and Auth
         const initializeAppAndAuth = async () => {
             try {
-                if (typeof __firebase_config === 'undefined' && Object.keys(firebaseConfig).length === 0) {
-                     showNotification("Konfigurasi Firebase tidak ditemukan. Silakan tambahkan konfigurasi proyek Anda di dalam kode.", true);
-                     return;
-                }
-                
-                db = getFirestore(firebaseApp);
-                auth = getAuth(firebaseApp);
+                // Using the provided Firebase config directly
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
                     
-                if (initialAuthToken) {
-                    const userCredential = await signInWithCustomToken(auth, initialAuthToken);
-                    userId = userCredential.user.uid;
-                } else {
-                    // Always sign in anonymously when hosting on Vercel
-                    const userCredential = await signInAnonymously(auth);
-                    userId = userCredential.user.uid;
-                }
+                // Use signInAnonymously() to ensure authentication works everywhere
+                const userCredential = await signInAnonymously(auth);
+                userId = userCredential.user.uid;
 
                 // Show the authenticated user's ID for multi-user collaboration
                 const userIdDiv = document.createElement('div');
